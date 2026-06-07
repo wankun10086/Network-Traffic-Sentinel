@@ -7,6 +7,25 @@ export type GeoClass =
 
 export type AttributionConfidence = "exact" | "estimated" | "unknown";
 
+export type IpType =
+  | "residential"
+  | "business"
+  | "hosting"
+  | "mobile"
+  | "cdn"
+  | "anycast"
+  | "unknown";
+
+export interface TransitHop {
+  hop_number: number;
+  ip: string;
+  hostname: string;
+  location: string;
+  latency_ms: number;
+  latitude?: number;
+  longitude?: number;
+}
+
 export interface RemoteEndpoint {
   remote_ip: string;
   remote_port?: number | null;
@@ -19,6 +38,9 @@ export interface RemoteEndpoint {
   confidence: AttributionConfidence;
   app_name?: string | null;
   pid?: number | null;
+  purity_score?: number;
+  ip_type?: IpType;
+  transit_route?: TransitHop[];
 }
 
 export interface ConnectionInfo {
@@ -131,4 +153,6 @@ export interface AppSettings {
   monthly_quota_bytes?: number | null;
   daily_quota_bytes?: number | null;
   overseas_quota_bytes?: number | null;
+  enable_canvas_gradient?: boolean;
+  blur_level?: number;
 }

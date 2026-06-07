@@ -6,16 +6,21 @@ import {
   ArrowUpFromLine,
   BarChart3,
   Bell,
+  Building2,
   ChevronsDown,
   ChevronsUp,
   CircleDot,
   Clock3,
+  Cloud,
   Copy,
   Database,
   ExternalLink,
   Gauge,
+  Globe,
   Globe2,
   HardDrive,
+  HelpCircle,
+  Home,
   LayoutDashboard,
   ListFilter,
   Monitor,
@@ -31,9 +36,11 @@ import {
   ShieldCheck,
   SignalHigh,
   SlidersHorizontal,
+  Smartphone,
   Waypoints,
   Wifi,
-  X
+  X,
+  Zap
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
@@ -58,8 +65,10 @@ import type {
   AttributionConfidence,
   ConnectionInfo,
   GeoClass,
+  IpType,
   RemoteEndpoint,
   TrafficSnapshot,
+  TransitHop,
   UsageAggregate,
   UsageRange
 } from "./types";
@@ -115,7 +124,9 @@ const defaultSettings: AppSettings = {
   include_virtual_adapters: false,
   monthly_quota_bytes: 300 * 1024 * 1024 * 1024,
   daily_quota_bytes: 15 * 1024 * 1024 * 1024,
-  overseas_quota_bytes: 30 * 1024 * 1024 * 1024
+  overseas_quota_bytes: 30 * 1024 * 1024 * 1024,
+  enable_canvas_gradient: true,
+  blur_level: 25
 };
 
 function useTrafficData(mode: TrafficDataMode) {
@@ -193,12 +204,52 @@ function useTrafficData(mode: TrafficDataMode) {
   return { snapshot, connections, apps, usage, alerts, loading, error, refresh };
 }
 
+function applyTheme(theme: "system" | "light" | "dark") {
+  let activeTheme = theme;
+  if (theme === "system") {
+    const isLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+    activeTheme = isLight ? "light" : "dark";
+  }
+  if (activeTheme === "light") {
+    document.documentElement.setAttribute("data-theme", "light");
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+  }
+}
+
+function applyVisualSettings(settings: AppSettings) {
+  if (settings.enable_canvas_gradient) {
+    document.documentElement.classList.add("enable-gradient");
+  } else {
+    document.documentElement.classList.remove("enable-gradient");
+  }
+  const blurVal = settings.blur_level !== undefined ? settings.blur_level : 25;
+  document.documentElement.style.setProperty("--blur-level", `${blurVal}px`);
+}
+
 export default function App() {
   const appRoute = parseAppRoute();
   const isWidget = window.location.hash.includes("widget");
   const data = useTrafficData(isWidget ? "widget" : appRoute ? "app" : "main");
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const activeCopy = tabCopy[activeTab];
+
+  useEffect(() => {
+    updateSettings({}).then((settings) => {
+      applyTheme(settings.theme);
+      applyVisualSettings(settings);
+    }).catch(console.error);
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: light)");
+    const handleMediaChange = () => {
+      updateSettings({}).then((settings) => {
+        applyTheme(settings.theme);
+        applyVisualSettings(settings);
+      }).catch(console.error);
+    };
+    mediaQuery.addEventListener("change", handleMediaChange);
+    return () => mediaQuery.removeEventListener("change", handleMediaChange);
+  }, []);
 
   if (isWidget) {
     return <Widget snapshot={data.snapshot} apps={data.apps} />;
@@ -287,22 +338,40 @@ export default function App() {
         {data.loading && <div className="empty-state">正在读取本机网络状态</div>}
 
         {!data.loading && activeTab === "overview" && (
-          <Overview
-            alerts={data.alerts}
-            apps={data.apps}
-            snapshot={data.snapshot}
-            usage={data.usage}
-          />
+          <div className="tab-pane">
+            <Overview
+              alerts={data.alerts}
+              apps={data.apps}
+              snapshot={data.snapshot}
+              usage={data.usage}
+            />
+          </div>
         )}
-        {!data.loading && activeTab === "apps" && <AppsRanking apps={data.apps} connections={data.connections} />}
+        {!data.loading && activeTab === "apps" && (
+          <div className="tab-pane">
+            <AppsRanking apps={data.apps} connections={data.connections} />
+          </div>
+        )}
         {!data.loading && activeTab === "realtime" && (
-          <Realtime connections={data.connections} apps={data.apps} snapshot={data.snapshot} />
+          <div className="tab-pane">
+            <Realtime connections={data.connections} apps={data.apps} snapshot={data.snapshot} />
+          </div>
         )}
-        {!data.loading && activeTab === "stats" && <Stats usage={data.usage} apps={data.apps} />}
+        {!data.loading && activeTab === "stats" && (
+          <div className="tab-pane">
+            <Stats usage={data.usage} apps={data.apps} />
+          </div>
+        )}
         {!data.loading && activeTab === "overseas" && (
-          <Overseas snapshot={data.snapshot} connections={data.connections} apps={data.apps} />
+          <div className="tab-pane">
+            <Overseas snapshot={data.snapshot} connections={data.connections} apps={data.apps} />
+          </div>
         )}
-        {!data.loading && activeTab === "control" && <ControlCenter alerts={data.alerts} />}
+        {!data.loading && activeTab === "control" && (
+          <div className="tab-pane">
+            <ControlCenter alerts={data.alerts} />
+          </div>
+        )}
       </main>
     </div>
   );
@@ -414,6 +483,17 @@ function Realtime({
   const [protocol, setProtocol] = useState<"all" | "TCP" | "UDP">("all");
   const [geoClass, setGeoClass] = useState<"all" | GeoClass>("all");
   const [direction, setDirection] = useState<"all" | ConnectionInfo["direction"]>("all");
+  const [selectedConn, setSelectedConn] = useState<ConnectionInfo | null>(null);
+
+  useEffect(() => {
+    if (selectedConn) {
+      const active = connections.find((item) => item.id === selectedConn.id);
+      if (active) {
+        setSelectedConn(active);
+      }
+    }
+  }, [connections, selectedConn]);
+
   const rows = useMemo(() => {
     const keyword = filter.trim().toLowerCase();
     return connections.filter((item) => {
@@ -476,10 +556,19 @@ function Realtime({
               <option value="unknown">未知</option>
             </SelectFilter>
           </FilterRail>
-          <ConnectionTable rows={rows} />
+          <ConnectionTable
+            rows={rows}
+            selectedId={selectedConn?.id}
+            onSelect={setSelectedConn}
+          />
         </section>
       )}
       {view === "profile" && <NetworkDetails apps={apps} connections={connections} snapshot={snapshot} />}
+
+      <ConnectionDetailsSheet
+        connection={selectedConn}
+        onClose={() => setSelectedConn(null)}
+      />
     </div>
   );
 }
@@ -743,9 +832,19 @@ function SettingsView({ embedded = false }: { embedded?: boolean }) {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    updateSettings({}).then(setSettings).catch(console.error);
+  }, []);
+
   async function patch(next: Partial<AppSettings>) {
-    setSettings((current) => ({ ...current, ...next }));
-    await updateSettings(next);
+    setSettings((current) => {
+      const merged = { ...current, ...next };
+      applyVisualSettings(merged);
+      return merged;
+    });
+    const updated = await updateSettings(next);
+    applyTheme(updated.theme);
+    applyVisualSettings(updated);
   }
 
   async function clear(scope: string) {
@@ -765,6 +864,26 @@ function SettingsView({ embedded = false }: { embedded?: boolean }) {
             type="checkbox"
           />
         </SettingRow>
+        {settings.theme !== "system" && (
+          <SettingRow label="手动选择主题">
+            <select
+              value={settings.theme}
+              onChange={(event) => void patch({ theme: event.target.value as "light" | "dark" })}
+              style={{
+                background: "var(--surface-solid)",
+                color: "var(--text)",
+                border: "1px solid var(--line-strong)",
+                borderRadius: "6px",
+                padding: "4px 8px",
+                fontSize: "12px",
+                cursor: "pointer"
+              }}
+            >
+              <option value="light">浅色 (Light)</option>
+              <option value="dark">深色 (Dark)</option>
+            </select>
+          </SettingRow>
+        )}
         <SettingRow label="开机自启">
           <input checked={settings.autostart} onChange={(event) => void patch({ autostart: event.target.checked })} type="checkbox" />
         </SettingRow>
@@ -791,6 +910,26 @@ function SettingsView({ embedded = false }: { embedded?: boolean }) {
             onChange={(event) => void patch({ include_virtual_adapters: event.target.checked })}
             type="checkbox"
           />
+        </SettingRow>
+        <SettingRow label="动态背景渐变">
+          <input
+            checked={settings.enable_canvas_gradient ?? true}
+            onChange={(event) => void patch({ enable_canvas_gradient: event.target.checked })}
+            type="checkbox"
+          />
+        </SettingRow>
+        <SettingRow label="磨砂玻璃模糊度">
+          <input
+            max="40"
+            min="0"
+            onChange={(event) => void patch({ blur_level: Number(event.target.value) })}
+            step="1"
+            type="range"
+            value={settings.blur_level ?? 25}
+          />
+          <span style={{ fontSize: '12px', minWidth: '32px', textAlign: 'right', color: 'var(--muted)' }}>
+            {settings.blur_level ?? 25}px
+          </span>
         </SettingRow>
       </div>
       <div className="danger-zone">
@@ -1358,7 +1497,15 @@ function AppTable({ apps, compact = false }: { apps: AppUsage[]; compact?: boole
   );
 }
 
-function ConnectionTable({ rows }: { rows: ConnectionInfo[] }) {
+function ConnectionTable({
+  rows,
+  selectedId,
+  onSelect
+}: {
+  rows: ConnectionInfo[];
+  selectedId?: string;
+  onSelect?: (item: ConnectionInfo) => void;
+}) {
   const visibleRows = rows.length > CONNECTION_RENDER_LIMIT ? rows.slice(0, CONNECTION_RENDER_LIMIT) : rows;
 
   return (
@@ -1372,6 +1519,7 @@ function ConnectionTable({ rows }: { rows: ConnectionInfo[] }) {
             <th>本地端点</th>
             <th>远端端点</th>
             <th>地区</th>
+            <th>类型</th>
             <th>状态</th>
             <th>方向</th>
             <th>置信度</th>
@@ -1379,7 +1527,11 @@ function ConnectionTable({ rows }: { rows: ConnectionInfo[] }) {
         </thead>
         <tbody>
           {visibleRows.map((item) => (
-            <tr key={item.id}>
+            <tr
+              className={selectedId === item.id ? "selected-row" : ""}
+              key={item.id}
+              onClick={() => onSelect?.(item)}
+            >
               <td>
                 <strong>{item.app_name}</strong>
                 <span>{item.process_name}</span>
@@ -1393,6 +1545,9 @@ function ConnectionTable({ rows }: { rows: ConnectionInfo[] }) {
               <td>
                 <GeoBadge value={item.endpoint.geo_class} label={item.endpoint.region_name} />
               </td>
+              <td>
+                <IpTypeBadge value={item.endpoint.ip_type ?? "unknown"} />
+              </td>
               <td>{item.state}</td>
               <td>{directionLabel(item.direction)}</td>
               <td>{confidenceLabel(item.confidence)}</td>
@@ -1400,12 +1555,12 @@ function ConnectionTable({ rows }: { rows: ConnectionInfo[] }) {
           ))}
           {rows.length > visibleRows.length && (
             <tr>
-              <td className="empty-table" colSpan={9}>
+              <td className="empty-table" colSpan={10}>
                 为保持桌面响应速度，当前仅显示前 {visibleRows.length} 条连接。请使用搜索缩小范围。
               </td>
             </tr>
           )}
-          {rows.length === 0 && <EmptyTable colSpan={9} text="没有匹配的连接" />}
+          {rows.length === 0 && <EmptyTable colSpan={10} text="没有匹配的连接" />}
         </tbody>
       </table>
     </div>
@@ -1442,6 +1597,26 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => Pro
 
 function GeoBadge({ value, label }: { value: GeoClass; label: string }) {
   return <span className={`geo-badge ${value}`}>{label || geoClassLabel(value)}</span>;
+}
+
+function IpTypeBadge({ value }: { value: IpType }) {
+  const config: Record<IpType, { label: string; icon: LucideIcon }> = {
+    residential: { label: "住宅", icon: Home },
+    business: { label: "企业", icon: Building2 },
+    hosting: { label: "机房", icon: Cloud },
+    mobile: { label: "移动", icon: Smartphone },
+    cdn: { label: "CDN", icon: Zap },
+    anycast: { label: "任播", icon: Globe },
+    unknown: { label: "未知", icon: HelpCircle }
+  };
+  const item = config[value] || config.unknown;
+  const Icon = item.icon;
+  return (
+    <span className={`ip-type-badge ${value}`}>
+      <Icon size={12} />
+      <span>{item.label}</span>
+    </span>
+  );
 }
 
 function ProtocolPill({ value }: { value: ConnectionInfo["protocol"] }) {
@@ -1627,4 +1802,323 @@ function countBy<T>(items: T[], select: (item: T) => string) {
   return Array.from(counts.entries())
     .map(([key, count]) => ({ key, count }))
     .sort((a, b) => b.count - a.count);
+}
+
+function TransitMap({ route }: { route: TransitHop[] }) {
+  const width = 390;
+  const height = 180;
+
+  // Fixed Pacific-centered projection (Center on lon = 160)
+  const mapX = (lon: number) => {
+    let lonAdj = lon - 160;
+    if (lonAdj < -180) lonAdj += 360;
+    if (lonAdj > 180) lonAdj -= 360;
+    return width / 2 + (lonAdj / 180) * (width / 2 - 15);
+  };
+
+  const mapY = (lat: number) => {
+    return height / 2 - (lat / 90) * (height / 2 - 20);
+  };
+
+  const gridDots = [];
+  for (let x = 15; x < width; x += 30) {
+    for (let y = 15; y < height; y += 25) {
+      gridDots.push(<circle key={`dot-${x}-${y}`} cx={x} cy={y} r={1.2} className="map-grid-dot" />);
+    }
+  }
+
+  const gridLines = [];
+  for (let x = 40; x < width; x += 80) {
+    gridLines.push(<line key={`vline-${x}`} x1={x} y1={0} x2={x} y2={height} className="map-grid-line" />);
+  }
+  for (let y = 30; y < height; y += 45) {
+    gridLines.push(<line key={`hline-${y}`} x1={0} y1={y} x2={width} y2={y} className="map-grid-line" />);
+  }
+
+  // Continent paths for Pacific-centered view
+  const continents = (
+    <g className="map-continents">
+      {/* Eurasia & Africa */}
+      <path d="M 15,35 Q 45,30 100,28 Q 155,26 185,32 Q 180,55 160,78 Q 140,82 130,105 Q 85,130 53,148 Q 32,115 18,90 Q 15,75 15,35 Z" className="map-continent" />
+      {/* North America */}
+      <path d="M 230,32 Q 270,26 320,24 Q 360,28 365,48 Q 335,62 305,68 Q 275,88 255,88 Q 250,60 230,32 Z" className="map-continent" />
+      {/* South America */}
+      <path d="M 319,102 Q 349,108 359,122 Q 344,158 324,168 Q 314,138 319,102 Z" className="map-continent" />
+      {/* Australia */}
+      <path d="M 148,118 Q 188,122 183,142 Q 153,138 148,118 Z" className="map-continent" />
+      {/* Greenland */}
+      <path d="M 345,30 Q 360,25 365,35 Q 355,42 345,30 Z" className="map-continent" />
+      {/* UK */}
+      <path d="M 33,48 Q 37,46 35,52 Q 32,54 33,48 Z" className="map-continent" />
+      {/* Japan */}
+      <path d="M 173,59 Q 178,61 176,66 Q 171,64 173,59 Z" className="map-continent" />
+      {/* Madagascar */}
+      <path d="M 80,102 Q 85,104 83,110 Q 78,108 80,102 Z" className="map-continent" />
+      {/* New Zealand */}
+      <path d="M 207,118 Q 212,120 210,125 Q 205,123 207,118 Z" className="map-continent" />
+      {/* Indonesia */}
+      <path d="M 145,95 Q 160,93 165,97 Q 155,99 145,95 Z" className="map-continent" />
+    </g>
+  );
+
+  const paths = [];
+  for (let i = 0; i < route.length - 1; i++) {
+    const p1 = { x: mapX(route[i].longitude ?? 116.4), y: mapY(route[i].latitude ?? 39.9) };
+    const p2 = { x: mapX(route[i + 1].longitude ?? 116.4), y: mapY(route[i + 1].latitude ?? 39.9) };
+
+    const cx = (p1.x + p2.x) / 2;
+    const cy = Math.min(p1.y, p2.y) - Math.abs(p1.x - p2.x) * 0.15;
+
+    const pathD = `M ${p1.x} ${p1.y} Q ${cx} ${cy} ${p2.x} ${p2.y}`;
+    paths.push(
+      <g key={`path-${i}`}>
+        <path d={pathD} className="map-transit-path" stroke="rgba(0, 150, 255, 0.15)" />
+        <path d={pathD} className="map-transit-path-flow" stroke="url(#flowGradient)" />
+      </g>
+    );
+  }
+
+  const nodes = route.map((hop, i) => {
+    const x = mapX(hop.longitude ?? 116.4);
+    const y = mapY(hop.latitude ?? 39.9);
+
+    let type = "transit";
+    if (i === 0) type = "local";
+    else if (i === route.length - 1) type = "target";
+
+    return (
+      <g key={`node-${hop.hop_number}-${hop.ip}`}>
+        <circle cx={x} cy={y} r={9} className={`map-hop-glow ${type}`} />
+        <circle cx={x} cy={y} r={4.5} className={`map-hop-node ${type}`} />
+        {(i === 0 || i === route.length - 1) && (
+          <text
+            x={x}
+            y={y + (i === 0 ? 18 : -11)}
+            textAnchor="middle"
+            fill="var(--text)"
+            fontSize="9"
+            fontWeight="600"
+            style={{ fill: "var(--text)", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
+          >
+            {i === 0 ? "本机" : hop.location}
+          </text>
+        )}
+      </g>
+    );
+  });
+
+  return (
+    <svg className="transit-map-svg" viewBox={`0 0 ${width} ${height}`}>
+      <defs>
+        <linearGradient id="flowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="var(--up)" stopOpacity="0.8" />
+          <stop offset="50%" stopColor="var(--down)" stopOpacity="1" />
+          <stop offset="100%" stopColor="var(--foreign)" stopOpacity="0.4" />
+        </linearGradient>
+      </defs>
+      {gridLines}
+      {gridDots}
+      {continents}
+      {paths}
+      {nodes}
+    </svg>
+  );
+}
+
+function PurityMeter({ score }: { score: number }) {
+  const radius = 40;
+  const stroke = 5;
+  const normalizedRadius = radius - stroke * 2;
+  const circumference = normalizedRadius * 2 * Math.PI;
+  const strokeDashoffset = circumference - (score / 100) * circumference;
+
+  let tone = "purity-high";
+  let desc = "干净安全 (Residential / Business)";
+  if (score < 40) {
+    tone = "purity-low";
+    desc = "高风险代理/扫描源";
+  } else if (score < 80) {
+    tone = "purity-med";
+    desc = "托管中心 / 代理 / VPN";
+  }
+
+  return (
+    <div className="purity-card">
+      <div className="purity-ring-container">
+        <svg height={radius * 2} width={radius * 2}>
+          <circle
+            stroke="rgba(255, 255, 255, 0.05)"
+            fill="transparent"
+            strokeWidth={stroke}
+            r={normalizedRadius}
+            cx={radius}
+            cy={radius}
+          />
+          <circle
+            stroke={score >= 80 ? "var(--up)" : score >= 40 ? "var(--warning)" : "var(--danger)"}
+            fill="transparent"
+            strokeWidth={stroke}
+            strokeDasharray={circumference + " " + circumference}
+            style={{ strokeDashoffset, transition: "stroke-dashoffset 0.5s ease" }}
+            strokeLinecap="round"
+            r={normalizedRadius}
+            cx={radius}
+            cy={radius}
+            transform={`rotate(-90 ${radius} ${radius})`}
+          />
+        </svg>
+        <div className="purity-ring-text">
+          <strong style={{ color: score >= 80 ? "var(--up)" : score >= 40 ? "var(--warning)" : "var(--danger)" }}>
+            {score}
+          </strong>
+          <span>SCORE</span>
+        </div>
+      </div>
+
+      <div className="purity-info">
+        <span className={`purity-status-label ${tone}`}>{desc}</span>
+        <div className="purity-audit-list">
+          <div className={`purity-audit-item ${score < 80 ? "flagged" : "clean"}`}>
+            <span className="purity-audit-dot"></span>
+            <span>{score < 80 ? "数据中心/托管中转" : "非公开托管中心"}</span>
+          </div>
+          <div className={`purity-audit-item ${score < 50 ? "flagged" : "clean"}`}>
+            <span className="purity-audit-dot"></span>
+            <span>{score < 50 ? "检出公共代理" : "无公开代理特征"}</span>
+          </div>
+          <div className={`purity-audit-item ${score < 40 ? "flagged" : "clean"}`}>
+            <span className="purity-audit-dot"></span>
+            <span>{score < 40 ? "Tor / 暗网节点" : "非洋葱网络节点"}</span>
+          </div>
+          <div className={`purity-audit-item ${score < 60 ? "flagged" : "clean"}`}>
+            <span className="purity-audit-dot"></span>
+            <span>{score < 60 ? "有恶意报告记录" : "信誉良好/无记录"}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TransitTimeline({ route }: { route: TransitHop[] }) {
+  return (
+    <div className="route-timeline">
+      {route.map((hop, i) => {
+        let type = "transit";
+        if (i === 0) type = "local";
+        else if (i === route.length - 1) type = "target";
+
+        let latencyTone = "low";
+        if (hop.latency_ms > 150) latencyTone = "high";
+        else if (hop.latency_ms > 40) latencyTone = "medium";
+
+        return (
+          <div className={`route-hop-row ${type}`} key={`${hop.hop_number}-${hop.ip}`}>
+            <div className="route-hop-info">
+              <span className="route-hop-number">HOP {hop.hop_number}</span>
+              <strong className="route-hop-title">{hop.location}</strong>
+              <span className="route-hop-ip">
+                {hop.ip} {hop.hostname ? `· ${hop.hostname}` : ""}
+              </span>
+            </div>
+            <div className="route-hop-meta">
+              <span className={`route-hop-latency ${latencyTone}`}>{hop.latency_ms} ms</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ConnectionDetailsSheet({
+  connection,
+  onClose
+}: {
+  connection: ConnectionInfo | null;
+  onClose: () => void;
+}) {
+  const isOpen = connection !== null;
+  const endpoint = connection?.endpoint;
+  const purity = endpoint?.purity_score ?? 100;
+  const ipType = endpoint?.ip_type ?? "unknown";
+  const route = endpoint?.transit_route ?? [];
+
+  const typeMap: Record<string, { label: string; icon: LucideIcon }> = {
+    residential: { label: "住宅宽带 (Residential)", icon: Home },
+    business: { label: "企业专线 (Business)", icon: Building2 },
+    hosting: { label: "数据中心/云服务 (Hosting)", icon: Cloud },
+    mobile: { label: "蜂窝数据 (Mobile)", icon: Smartphone },
+    cdn: { label: "CDN 边缘节点 (CDN)", icon: Zap },
+    anycast: { label: "任播网络 (Anycast)", icon: Globe },
+    unknown: { label: "未知类型 IP", icon: HelpCircle }
+  };
+  const typeInfo = typeMap[ipType] || typeMap.unknown;
+  const DrawIcon = typeInfo.icon;
+
+  return (
+    <aside className={`detail-drawer ${isOpen ? "open" : ""}`}>
+      <div className="drawer-header">
+        <div className="drawer-header-title">
+          <h3>连接端点轨迹剖析</h3>
+          <p>
+            {connection?.app_name} · PID {connection?.pid}
+          </p>
+        </div>
+        <button className="drawer-close-btn" onClick={onClose} title="关闭面板" type="button">
+          <X size={18} />
+        </button>
+      </div>
+
+      {connection && (
+        <div className="drawer-body">
+          <div className="drawer-section">
+            <span className="drawer-section-title">IP 纯净度审计</span>
+            <PurityMeter score={purity} />
+          </div>
+
+          <div className="drawer-section">
+            <span className="drawer-section-title">IP 物理分类</span>
+            <div className="ip-type-card">
+              <div className="ip-type-info">
+                <span className="ip-type-icon">
+                  <DrawIcon size={18} />
+                </span>
+                <div className="ip-type-details">
+                  <strong>{typeInfo.label}</strong>
+                  <span>{connection.remote_ip}</span>
+                </div>
+              </div>
+              <GeoBadge value={endpoint?.geo_class ?? "unknown"} label={endpoint?.region_name ?? "未知地区"} />
+            </div>
+          </div>
+
+          <div className="drawer-section">
+            <span className="drawer-section-title">中转流光路由拓扑</span>
+            <div className="transit-map-wrapper">
+              {route.length > 0 ? (
+                <TransitMap route={route} />
+              ) : (
+                <div
+                  className="empty-inline"
+                  style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}
+                >
+                  无中转路由轨迹数据
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="drawer-section" style={{ paddingBottom: "20px" }}>
+            <span className="drawer-section-title">路由跳转时序 Timeline</span>
+            {route.length > 0 ? (
+              <TransitTimeline route={route} />
+            ) : (
+              <div className="empty-inline">暂无路由时序信息</div>
+            )}
+          </div>
+        </div>
+      )}
+    </aside>
+  );
 }

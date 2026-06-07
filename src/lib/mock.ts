@@ -116,7 +116,16 @@ export const mockConnections: ConnectionInfo[] = [
       bytes_up: 26000,
       confidence: "estimated",
       app_name: "Chrome",
-      pid: 4484
+      pid: 4484,
+      purity_score: 98,
+      ip_type: "anycast",
+      transit_route: [
+        { hop_number: 1, ip: "192.168.1.1", hostname: "gateway.local", location: "局域网出口", latency_ms: 1, latitude: 39.9042, longitude: 116.4074 },
+        { hop_number: 2, ip: "119.147.10.1", hostname: "bj-un-core.net", location: "中国北京 联通骨干网", latency_ms: 6, latitude: 39.9042, longitude: 116.4074 },
+        { hop_number: 3, ip: "202.97.58.1", hostname: "gz-telecom-backbone.net", location: "中国广州 电信国际出口", latency_ms: 22, latitude: 23.1291, longitude: 113.2644 },
+        { hop_number: 4, ip: "203.119.102.3", hostname: "hkix-gateway.net", location: "中国香港 交换中心", latency_ms: 36, latitude: 22.3193, longitude: 114.1694 },
+        { hop_number: 5, ip: "142.250.72.142", hostname: "google-anycast.com", location: "美国圣克拉拉 Google CDN", latency_ms: 154, latitude: 37.3541, longitude: -121.9552 }
+      ]
     }
   },
   {
@@ -143,7 +152,16 @@ export const mockConnections: ConnectionInfo[] = [
       bytes_up: 42000,
       confidence: "estimated",
       app_name: "Visual Studio Code",
-      pid: 6932
+      pid: 6932,
+      purity_score: 95,
+      ip_type: "hosting",
+      transit_route: [
+        { hop_number: 1, ip: "192.168.1.1", hostname: "gateway.local", location: "局域网出口", latency_ms: 1, latitude: 39.9042, longitude: 116.4074 },
+        { hop_number: 2, ip: "219.141.136.1", hostname: "sh-telecom-border.net", location: "中国上海 电信城域网", latency_ms: 8, latitude: 31.2304, longitude: 121.4737 },
+        { hop_number: 3, ip: "59.43.18.23", hostname: "sh-cn2-gateway.net", location: "中国上海 CN2精品网出口", latency_ms: 12, latitude: 31.2304, longitude: 121.4737 },
+        { hop_number: 4, ip: "180.87.180.12", hostname: "ntt-sg-gateway.net", location: "新加坡 NTT交换中心", latency_ms: 54, latitude: 1.3521, longitude: 103.8198 },
+        { hop_number: 5, ip: "20.205.243.166", hostname: "github-hosting.ms", location: "新加坡 微软云数据中心", latency_ms: 56, latitude: 1.3521, longitude: 103.8198 }
+      ]
     }
   },
   {
@@ -170,7 +188,14 @@ export const mockConnections: ConnectionInfo[] = [
       bytes_up: 18000,
       confidence: "estimated",
       app_name: "WeChat",
-      pid: 5332
+      pid: 5332,
+      purity_score: 100,
+      ip_type: "business",
+      transit_route: [
+        { hop_number: 1, ip: "192.168.1.1", hostname: "gateway.local", location: "局域网出口", latency_ms: 1, latitude: 39.9042, longitude: 116.4074 },
+        { hop_number: 2, ip: "120.196.165.23", hostname: "sz-mobile-gateway.net", location: "中国深圳 移动骨干网", latency_ms: 5, latitude: 22.5431, longitude: 114.0579 },
+        { hop_number: 3, ip: "119.147.10.22", hostname: "tencent-server.com", location: "中国广州 腾讯云核心机房", latency_ms: 7, latitude: 23.1291, longitude: 113.2644 }
+      ]
     }
   },
   {
@@ -197,7 +222,16 @@ export const mockConnections: ConnectionInfo[] = [
       bytes_up: 126000,
       confidence: "estimated",
       app_name: "OneDrive",
-      pid: 7364
+      pid: 7364,
+      purity_score: 90,
+      ip_type: "cdn",
+      transit_route: [
+        { hop_number: 1, ip: "192.168.1.1", hostname: "gateway.local", location: "局域网出口", latency_ms: 1, latitude: 39.9042, longitude: 116.4074 },
+        { hop_number: 2, ip: "119.147.10.1", hostname: "bj-telecom.net", location: "中国北京 电信城域网", latency_ms: 5, latitude: 39.9042, longitude: 116.4074 },
+        { hop_number: 3, ip: "202.97.12.34", hostname: "sh-telecom-backbone.net", location: "中国上海 电信骨干网", latency_ms: 14, latitude: 31.2304, longitude: 121.4737 },
+        { hop_number: 4, ip: "198.32.176.12", hostname: "pacnet-hk.net", location: "中国香港 亚太网关", latency_ms: 28, latitude: 22.3193, longitude: 114.1694 },
+        { hop_number: 5, ip: "13.107.42.12", hostname: "microsoft-cdn.com", location: "美国华盛顿 微软 CDN 边缘节点", latency_ms: 168, latitude: 47.6062, longitude: -122.3321 }
+      ]
     }
   },
   {
@@ -223,7 +257,13 @@ export const mockConnections: ConnectionInfo[] = [
       bytes_up: 8000,
       confidence: "estimated",
       app_name: "Chrome",
-      pid: 4484
+      pid: 4484,
+      purity_score: 100,
+      ip_type: "business",
+      transit_route: [
+        { hop_number: 1, ip: "192.168.1.1", hostname: "gateway.local", location: "局域网出口", latency_ms: 1, latitude: 39.9042, longitude: 116.4074 },
+        { hop_number: 2, ip: "10.0.0.8", hostname: "printer-office.local", location: "局域网办公设备", latency_ms: 3, latitude: 39.9042, longitude: 116.4074 }
+      ]
     }
   },
   {
@@ -249,7 +289,14 @@ export const mockConnections: ConnectionInfo[] = [
       bytes_up: 0,
       confidence: "unknown",
       app_name: "System",
-      pid: 0
+      pid: 0,
+      purity_score: 32,
+      ip_type: "hosting",
+      transit_route: [
+        { hop_number: 1, ip: "192.168.1.1", hostname: "gateway.local", location: "局域网出口", latency_ms: 1, latitude: 39.9042, longitude: 116.4074 },
+        { hop_number: 2, ip: "218.30.104.2", hostname: "cn-isp.net", location: "中国骨干路由节点", latency_ms: 14, latitude: 39.9042, longitude: 116.4074 },
+        { hop_number: 3, ip: "203.0.113.44", hostname: "proxy-node.xyz", location: "塞舌尔 商业代理/扫描服务器", latency_ms: 220, latitude: -4.6796, longitude: 55.4920 }
+      ]
     }
   }
 ];
@@ -274,7 +321,9 @@ export const mockSettings: AppSettings = {
   include_virtual_adapters: false,
   monthly_quota_bytes: 300 * 1024 * 1024 * 1024,
   daily_quota_bytes: 15 * 1024 * 1024 * 1024,
-  overseas_quota_bytes: 30 * 1024 * 1024 * 1024
+  overseas_quota_bytes: 30 * 1024 * 1024 * 1024,
+  enable_canvas_gradient: true,
+  blur_level: 25
 };
 
 export function mockSnapshot(): TrafficSnapshot {
